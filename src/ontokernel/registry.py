@@ -12,10 +12,10 @@ import importlib.metadata
 import logging
 from typing import TYPE_CHECKING
 
-from ontology.protocols import DomainPlugin
+from ontokernel.protocols import DomainPlugin
 
 if TYPE_CHECKING:
-    from ontology.graph import OntologyGraph
+    from ontokernel.graph import OntologyGraph
 
 logger = logging.getLogger(__name__)
 

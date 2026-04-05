@@ -12,8 +12,8 @@ from __future__ import annotations
 import logging
 import time
 
-from ontology.protocols import EnricherProtocol, OntologyBackend
-from ontology.schema import EntityRef, Predicate, Triple
+from ontokernel.protocols import EnricherProtocol, OntologyBackend
+from ontokernel.schema import EntityRef, Predicate, Triple
 
 logger = logging.getLogger(__name__)
 

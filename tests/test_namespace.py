@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from ontology.namespace import NamespaceRegistry, migrate_bare_entity
-from ontology.schema import EntityRef
+from ontokernel.namespace import NamespaceRegistry, migrate_bare_entity
+from ontokernel.schema import EntityRef
 
 
 class TestNamespaceRegistry:

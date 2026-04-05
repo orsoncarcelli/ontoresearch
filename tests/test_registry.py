@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ontology.protocols import DomainPlugin, EnricherProtocol
-from ontology.registry import PluginRegistry, discover_plugins
+from ontokernel.protocols import DomainPlugin, EnricherProtocol
+from ontokernel.registry import PluginRegistry, discover_plugins
 
 if TYPE_CHECKING:
-    from ontology.graph import OntologyGraph
+    from ontokernel.graph import OntologyGraph
 
 
 class StubEnricher:
@@ -99,8 +99,8 @@ class TestPluginRegistry:
         assert "hacked" not in reg.plugins
 
     def test_register_all_calls_register(self, tmp_path: object) -> None:
-        from ontology.config import KernelConfig
-        from ontology.graph import OntologyGraph
+        from ontokernel.config import KernelConfig
+        from ontokernel.graph import OntologyGraph
 
         config = KernelConfig(backend="networkx", persist_path=tmp_path / "g.json")  # type: ignore[operator]
         graph = OntologyGraph(config=config)
@@ -112,8 +112,8 @@ class TestPluginRegistry:
         assert p.registered is True
 
     def test_register_all_handles_failure(self, tmp_path: object) -> None:
-        from ontology.config import KernelConfig
-        from ontology.graph import OntologyGraph
+        from ontokernel.config import KernelConfig
+        from ontokernel.graph import OntologyGraph
 
         config = KernelConfig(backend="networkx", persist_path=tmp_path / "g.json")  # type: ignore[operator]
         graph = OntologyGraph(config=config)

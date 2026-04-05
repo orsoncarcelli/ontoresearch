@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from ontology.config import KernelConfig
-from ontology.schema import EntityRef, Predicate, Triple
+from ontokernel.config import KernelConfig
+from ontokernel.schema import EntityRef, Predicate, Triple
 
 
 @pytest.fixture()

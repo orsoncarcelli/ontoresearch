@@ -18,8 +18,8 @@ Requires Python >= 3.11.
 ## Quick start
 
 ```python
-from ontology import OntologyGraph, Triple, EntityRef, Predicate
-from ontology.config import KernelConfig
+from ontokernel import OntologyGraph, Triple, EntityRef, Predicate
+from ontokernel.config import KernelConfig
 
 graph = OntologyGraph(KernelConfig(persist_path="data/ontology.json"))
 
@@ -78,7 +78,7 @@ polymarket = "onto_market.domains.polymarket:PolymarketPlugin"
 ```
 
 ```python
-from ontology import OntologyGraph, PluginRegistry, discover_plugins
+from ontokernel import OntologyGraph, PluginRegistry, discover_plugins
 
 graph = OntologyGraph()
 registry = PluginRegistry()
@@ -95,6 +95,14 @@ registry.register_all(graph)
 - Backend-owned `RLock` on all mutations — facade stays thin
 - Convenience methods (`context_for`, `prune`) live in facade, not backend protocol
 - Enrichment is explicit pipeline invocation — no reactive events yet (planned v2.0)
+
+## Polymarket & external data
+
+**Ontokernel does not call HTTP APIs.** It only stores and queries typed triples. Consumers (for example **onto-market** / prediction-markets) pull markets from Polymarket’s **Gamma** and **CLOB** surfaces; Polymarket’s own reference is the [`polymarket-agents`](https://github.com/Polymarket/polymarket-agents) repo (`GammaMarketClient`, `py-clob-client`).
+
+**Alignment for your mission:** When mapping API payloads into the graph, use **stable ids** (Gamma market id, CLOB token ids) inside `EntityRef` names or `metadata`, alongside display strings. That keeps ontology-backed priors joinable with official trader tooling and with SQLite / ML datasets derived from the same exports.
+
+See **onto-market** `CLAUDE.md` → *Polymarket data sources (official stack alignment)* for the concrete endpoint and env-var mapping.
 
 
 

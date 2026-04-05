@@ -17,7 +17,7 @@ from typing import Any, Literal
 
 import networkx as nx
 
-from ontology.schema import Entity, EntityRef, Predicate, Triple
+from ontokernel.schema import Entity, EntityRef, Predicate, Triple
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +84,9 @@ class NetworkXBackend:
         subject: EntityRef | None = None,
         predicate: Predicate | None = None,
         obj: EntityRef | None = None,
+        *,
+        before_timestamp: float | None = None,
+        exclude_sources: frozenset[str] | None = None,
     ) -> list[Triple]:
         results: list[Triple] = []
         s_key = subject.qualified if subject else None
@@ -97,6 +100,10 @@ class NetworkXBackend:
                 continue
             if pred_val and key != pred_val:
                 continue
+            if before_timestamp is not None and float(data.get("timestamp", 0.0)) > before_timestamp:
+                continue
+            if exclude_sources is not None and str(data.get("source", "")) in exclude_sources:
+                continue
             results.append(self._edge_to_triple(u, v, key, data))
         return results
 
@@ -104,6 +111,9 @@ class NetworkXBackend:
         self,
         ref: EntityRef,
         direction: Literal["out", "in", "both"] = "both",
+        *,
+        before_timestamp: float | None = None,
+        exclude_sources: frozenset[str] | None = None,
     ) -> list[Triple]:
         key = ref.qualified
         if key not in self._g:
@@ -111,9 +121,17 @@ class NetworkXBackend:
         results: list[Triple] = []
         if direction in ("out", "both"):
             for _, tgt, ekey, data in self._g.out_edges(key, data=True, keys=True):
+                if before_timestamp is not None and float(data.get("timestamp", 0.0)) > before_timestamp:
+                    continue
+                if exclude_sources is not None and str(data.get("source", "")) in exclude_sources:
+                    continue
                 results.append(self._edge_to_triple(key, tgt, ekey, data))
         if direction in ("in", "both"):
             for src, _, ekey, data in self._g.in_edges(key, data=True, keys=True):
+                if before_timestamp is not None and float(data.get("timestamp", 0.0)) > before_timestamp:
+                    continue
+                if exclude_sources is not None and str(data.get("source", "")) in exclude_sources:
+                    continue
                 results.append(self._edge_to_triple(src, key, ekey, data))
         return results
 

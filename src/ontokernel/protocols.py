@@ -11,10 +11,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
-from ontology.schema import Entity, EntityRef, Predicate, Triple
+from ontokernel.schema import Entity, EntityRef, Predicate, Triple
 
 if TYPE_CHECKING:
-    from ontology.graph import OntologyGraph
+    from ontokernel.graph import OntologyGraph
 
 
 @runtime_checkable
@@ -42,12 +42,18 @@ class OntologyBackend(Protocol):
         subject: EntityRef | None = None,
         predicate: Predicate | None = None,
         obj: EntityRef | None = None,
+        *,
+        before_timestamp: float | None = None,
+        exclude_sources: frozenset[str] | None = None,
     ) -> list[Triple]: ...
 
     def neighbors(
         self,
         ref: EntityRef,
         direction: Literal["out", "in", "both"] = "both",
+        *,
+        before_timestamp: float | None = None,
+        exclude_sources: frozenset[str] | None = None,
     ) -> list[Triple]: ...
 
     def stats(self) -> dict[str, Any]: ...

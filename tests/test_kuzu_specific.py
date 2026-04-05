@@ -9,8 +9,8 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from ontology.backends.kuzu import KuzuBackend
-from ontology.schema import EntityRef, Predicate, Triple
+from ontokernel.backends.kuzu import KuzuBackend
+from ontokernel.schema import EntityRef, Predicate, Triple
 
 
 def _ref(name: str, ns: str = "test") -> EntityRef:

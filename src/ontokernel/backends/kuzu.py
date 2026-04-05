@@ -19,7 +19,7 @@ from typing import Any, Literal
 
 import kuzu
 
-from ontology.schema import Entity, EntityRef, Predicate, Triple
+from ontokernel.schema import Entity, EntityRef, Predicate, Triple
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +192,9 @@ class KuzuBackend:
         subject: EntityRef | None = None,
         predicate: Predicate | None = None,
         obj: EntityRef | None = None,
+        *,
+        before_timestamp: float | None = None,
+        exclude_sources: frozenset[str] | None = None,
     ) -> list[Triple]:
         conn = self._ensure_db()
         results: list[Triple] = []
@@ -208,6 +211,13 @@ class KuzuBackend:
             if obj:
                 where_clauses.append("b.qname = $o")
                 params["o"] = obj.qualified
+            if before_timestamp is not None:
+                where_clauses.append("r.ts <= $ts_cutoff")
+                params["ts_cutoff"] = before_timestamp
+            if exclude_sources:
+                for i, src in enumerate(sorted(exclude_sources)):
+                    where_clauses.append(f"r.source <> $excl_{i}")
+                    params[f"excl_{i}"] = src
 
             where = f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
             query = (
@@ -230,6 +240,9 @@ class KuzuBackend:
         self,
         ref: EntityRef,
         direction: Literal["out", "in", "both"] = "both",
+        *,
+        before_timestamp: float | None = None,
+        exclude_sources: frozenset[str] | None = None,
     ) -> list[Triple]:
         key = ref.qualified
         conn = self._ensure_db()
@@ -240,25 +253,40 @@ class KuzuBackend:
         if not result_check.has_next() or result_check.get_next()[0] == 0:
             return []
 
+        temporal_clauses: list[str] = []
+        temporal_params: dict[str, Any] = {}
+        if before_timestamp is not None:
+            temporal_clauses.append("r.ts <= $ts_cutoff")
+            temporal_params["ts_cutoff"] = before_timestamp
+        if exclude_sources:
+            for i, src in enumerate(sorted(exclude_sources)):
+                temporal_clauses.append(f"r.source <> $excl_{i}")
+                temporal_params[f"excl_{i}"] = src
+        where_suffix = f" AND {' AND '.join(temporal_clauses)}" if temporal_clauses else ""
+
         results: list[Triple] = []
         for pred, rel in _REL_TABLE_NAMES.items():
             if direction in ("out", "both"):
                 with contextlib.suppress(RuntimeError):
+                    params = {"q": key, **temporal_params}
                     out = self._exec(
                         conn,
                         f"MATCH (a:Entity {{qname: $q}})-[r:{rel}]->(b:Entity) "
+                        f"WHERE a.qname = $q{where_suffix} "
                         f"RETURN a.qname, b.qname, r.confidence, r.source, r.ts, r.metadata",
-                        {"q": key},
+                        params,
                     )
                     while out.has_next():
                         results.append(self._row_to_triple(out.get_next(), pred))
             if direction in ("in", "both"):
                 with contextlib.suppress(RuntimeError):
+                    params = {"q": key, **temporal_params}
                     inp = self._exec(
                         conn,
                         f"MATCH (a:Entity)-[r:{rel}]->(b:Entity {{qname: $q}}) "
+                        f"WHERE b.qname = $q{where_suffix} "
                         f"RETURN a.qname, b.qname, r.confidence, r.source, r.ts, r.metadata",
-                        {"q": key},
+                        params,
                     )
                     while inp.has_next():
                         results.append(self._row_to_triple(inp.get_next(), pred))

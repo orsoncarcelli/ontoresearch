@@ -9,15 +9,23 @@ No event firing in v1.0. No second lock layer — backends own their locks.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from collections import defaultdict
 from typing import Any, Callable, Literal
 
-from ontology.backends import create_backend
-from ontology.config import KernelConfig
-from ontology.protocols import OntologyBackend
-from ontology.schema import Entity, EntityRef, Predicate, QueryResult, Triple
+from ontokernel.backends import create_backend
+from ontokernel.config import KernelConfig
+from ontokernel.protocols import OntologyBackend
+from ontokernel.schema import (
+    Entity,
+    EntityRef,
+    GraphSnapshot,
+    Predicate,
+    QueryResult,
+    Triple,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -109,15 +117,29 @@ class OntologyGraph:
         subject: EntityRef | None = None,
         predicate: Predicate | None = None,
         obj: EntityRef | None = None,
+        *,
+        before_timestamp: float | None = None,
+        exclude_sources: frozenset[str] | None = None,
     ) -> list[Triple]:
-        return self._backend.query_triples(subject, predicate, obj)
+        return self._backend.query_triples(
+            subject, predicate, obj,
+            before_timestamp=before_timestamp,
+            exclude_sources=exclude_sources,
+        )
 
     def neighbors(
         self,
         ref: EntityRef,
         direction: Literal["out", "in", "both"] = "both",
+        *,
+        before_timestamp: float | None = None,
+        exclude_sources: frozenset[str] | None = None,
     ) -> list[Triple]:
-        return self._backend.neighbors(ref, direction)
+        return self._backend.neighbors(
+            ref, direction,
+            before_timestamp=before_timestamp,
+            exclude_sources=exclude_sources,
+        )
 
     def persist(self) -> None:
         self._backend.persist()
@@ -253,3 +275,33 @@ class OntologyGraph:
         top = sorted(degree.items(), key=lambda x: -x[1])[:10]
         base["top_entities"] = top
         return base
+
+    def snapshot(self) -> GraphSnapshot:
+        """Deterministic fingerprint of the current graph state.
+
+        Hash is computed over sorted (subject, predicate, object, confidence,
+        source) tuples so the result is stable across backends and insertion
+        order.
+        """
+        all_triples = self._backend.query_triples()
+        base_stats = self._backend.stats()
+
+        canonicalized = sorted(
+            (
+                t.subject.qualified,
+                t.predicate.value,
+                t.obj.qualified,
+                f"{t.confidence:.6f}",
+                t.source,
+            )
+            for t in all_triples
+        )
+        h = hashlib.sha256()
+        for row in canonicalized:
+            h.update("|".join(row).encode())
+            h.update(b"\n")
+        return GraphSnapshot(
+            node_count=base_stats["nodes"],
+            edge_count=base_stats["edges"],
+            content_hash=h.hexdigest(),
+        )

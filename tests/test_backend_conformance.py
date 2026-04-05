@@ -16,10 +16,10 @@ from typing import Any
 
 import pytest
 
-from ontology.backends.kuzu import KuzuBackend
-from ontology.backends.networkx import NetworkXBackend
-from ontology.protocols import OntologyBackend
-from ontology.schema import EntityRef, Predicate, Triple
+from ontokernel.backends.kuzu import KuzuBackend
+from ontokernel.backends.networkx import NetworkXBackend
+from ontokernel.protocols import OntologyBackend
+from ontokernel.schema import EntityRef, Predicate, Triple
 
 
 def _ref(name: str, ns: str = "test") -> EntityRef:
@@ -342,7 +342,7 @@ class TestConcurrentMutationSafety:
 class TestLegacyJsonRoundTrip:
     def test_load_legacy_format(self, tmp_path: Path) -> None:
         """Load a file in onto-market's node_link_data format."""
-        from ontology.migration import load_legacy_json
+        from ontokernel.migration import load_legacy_json
 
         legacy = {
             "directed": True,
@@ -378,7 +378,7 @@ class TestLegacyJsonRoundTrip:
 
     def test_migrate_into_backend(self, backend: OntologyBackend, tmp_path: Path) -> None:
         """Full round-trip: legacy JSON -> migration -> backend -> query."""
-        from ontology.migration import load_legacy_json
+        from ontokernel.migration import load_legacy_json
 
         legacy = {
             "directed": True, "multigraph": False, "graph": {},
@@ -406,7 +406,7 @@ class TestLegacyJsonRoundTrip:
         assert results[0].subject.name == "fed_rate"
 
     def test_unknown_predicate_maps_to_related_to(self, tmp_path: Path) -> None:
-        from ontology.migration import load_legacy_json
+        from ontokernel.migration import load_legacy_json
 
         legacy = {
             "directed": True, "multigraph": False, "graph": {},
@@ -421,6 +421,79 @@ class TestLegacyJsonRoundTrip:
         triples = load_legacy_json(legacy_path, namespace="test")
         assert len(triples) == 1
         assert triples[0].predicate == Predicate.RELATED_TO
+
+
+class TestTemporalFiltering:
+    """Temporal query parameters: before_timestamp and exclude_sources."""
+
+    def _add_temporal_data(self, backend: OntologyBackend) -> None:
+        backend.add_triples([
+            Triple(
+                subject=_ref("a"), predicate=Predicate.INFLUENCES, obj=_ref("b"),
+                confidence=0.8, source="agent", timestamp=1000.0,
+            ),
+            Triple(
+                subject=_ref("b"), predicate=Predicate.PREDICTS, obj=_ref("c"),
+                confidence=0.9, source="resolution", timestamp=2000.0,
+            ),
+            Triple(
+                subject=_ref("c"), predicate=Predicate.SUPPORTS, obj=_ref("d"),
+                confidence=0.7, source="ml_training", timestamp=3000.0,
+            ),
+        ])
+
+    def test_before_timestamp_filters_future(self, backend: OntologyBackend) -> None:
+        self._add_temporal_data(backend)
+        results = backend.query_triples(before_timestamp=1500.0)
+        assert len(results) == 1
+        assert results[0].source == "agent"
+
+    def test_before_timestamp_includes_exact(self, backend: OntologyBackend) -> None:
+        self._add_temporal_data(backend)
+        results = backend.query_triples(before_timestamp=2000.0)
+        assert len(results) == 2
+
+    def test_exclude_sources_single(self, backend: OntologyBackend) -> None:
+        self._add_temporal_data(backend)
+        results = backend.query_triples(exclude_sources=frozenset({"resolution"}))
+        assert len(results) == 2
+        assert all(r.source != "resolution" for r in results)
+
+    def test_exclude_sources_multiple(self, backend: OntologyBackend) -> None:
+        self._add_temporal_data(backend)
+        results = backend.query_triples(
+            exclude_sources=frozenset({"resolution", "ml_training"})
+        )
+        assert len(results) == 1
+        assert results[0].source == "agent"
+
+    def test_combined_temporal_and_source_filter(self, backend: OntologyBackend) -> None:
+        self._add_temporal_data(backend)
+        results = backend.query_triples(
+            before_timestamp=2500.0,
+            exclude_sources=frozenset({"resolution"}),
+        )
+        assert len(results) == 1
+        assert results[0].source == "agent"
+
+    def test_no_filters_returns_all(self, backend: OntologyBackend) -> None:
+        self._add_temporal_data(backend)
+        results = backend.query_triples()
+        assert len(results) == 3
+
+    def test_neighbors_before_timestamp(self, backend: OntologyBackend) -> None:
+        self._add_temporal_data(backend)
+        results = backend.neighbors(_ref("b"), before_timestamp=1500.0)
+        assert len(results) == 1
+        assert results[0].predicate == Predicate.INFLUENCES
+
+    def test_neighbors_exclude_sources(self, backend: OntologyBackend) -> None:
+        self._add_temporal_data(backend)
+        results = backend.neighbors(
+            _ref("b"), exclude_sources=frozenset({"resolution"})
+        )
+        assert len(results) == 1
+        assert results[0].source == "agent"
 
 
 class TestPerformanceSmoke:

@@ -11,9 +11,9 @@ import json
 import logging
 from pathlib import Path
 
-from ontology.namespace import migrate_bare_entity
-from ontology.protocols import OntologyBackend
-from ontology.schema import EntityRef, Predicate, Triple
+from ontokernel.namespace import migrate_bare_entity
+from ontokernel.protocols import OntologyBackend
+from ontokernel.schema import EntityRef, Predicate, Triple
 
 logger = logging.getLogger(__name__)
 

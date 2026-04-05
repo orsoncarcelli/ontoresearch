@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import math
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Predicate(StrEnum):
@@ -37,12 +37,14 @@ class Predicate(StrEnum):
     PRECEDES = "precedes"
 
 
-class EntityRef(BaseModel, frozen=True):
+class EntityRef(BaseModel):
     """Namespaced entity reference — the canonical internal form.
 
     Use EntityRef.parse() at IO boundaries to convert "ns:name" strings.
     Use .qualified property to serialize back to "ns:name".
     """
+
+    model_config = ConfigDict(frozen=True)
 
     namespace: str = Field(min_length=1)
     name: str = Field(min_length=1)
@@ -86,8 +88,10 @@ class EntityRef(BaseModel, frozen=True):
         return f"EntityRef({self.qualified!r})"
 
 
-class Triple(BaseModel, frozen=True):
+class Triple(BaseModel):
     """A typed, validated triple — the fundamental unit of the knowledge graph."""
+
+    model_config = ConfigDict(frozen=True)
 
     subject: EntityRef
     predicate: Predicate
@@ -135,3 +139,19 @@ class QueryResult(BaseModel):
 
     triples: list[Triple] = Field(default_factory=list)
     entities: list[Entity] = Field(default_factory=list)
+
+
+class GraphSnapshot(BaseModel):
+    """Immutable fingerprint of graph state at a point in time.
+
+    ``content_hash`` is a SHA-256 over sorted (subject, predicate, object,
+    confidence, source) tuples — deterministic regardless of insertion order
+    or backend choice.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    node_count: int
+    edge_count: int
+    content_hash: str
+    timestamp: float = Field(default_factory=time.time)

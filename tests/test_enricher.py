@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from ontology.backends.networkx import NetworkXBackend
-from ontology.enricher import EnrichmentPipeline, HubDecomposer
-from ontology.schema import EntityRef, Predicate, Triple
+from ontokernel.backends.networkx import NetworkXBackend
+from ontokernel.enricher import EnrichmentPipeline, HubDecomposer
+from ontokernel.schema import EntityRef, Predicate, Triple
 
 
 @pytest.fixture()

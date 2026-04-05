@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from ontology.schema import Entity, EntityRef, Predicate, QueryResult, Triple
+from ontokernel.schema import Entity, EntityRef, Predicate, QueryResult, Triple
 
 
 class TestPredicate:

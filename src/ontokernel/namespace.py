@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from ontology.schema import EntityRef
+from ontokernel.schema import EntityRef
 
 
 class NamespaceRegistry:

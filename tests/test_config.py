@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ontology.config import KernelConfig
+from ontokernel.config import KernelConfig
 
 
 class TestKernelConfig:

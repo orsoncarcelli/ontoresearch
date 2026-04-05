@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from ontology.config import KernelConfig
-from ontology.graph import OntologyGraph
-from ontology.schema import EntityRef, Predicate, QueryResult, Triple
+from ontokernel.config import KernelConfig
+from ontokernel.graph import OntologyGraph
+from ontokernel.schema import EntityRef, Predicate, QueryResult, Triple
 
 
-@pytest.fixture()
+@pytest.fixture
 def graph(tmp_path: Path) -> OntologyGraph:
     cfg = KernelConfig(
         backend="networkx",
@@ -153,6 +153,69 @@ class TestContextFor:
         result = graph.context_for_query("")
         assert isinstance(result, QueryResult)
         assert result.triples == []
+
+
+class TestHooks:
+    def test_add_triple_fires_hook(self, graph: OntologyGraph) -> None:
+        received: list[list[Triple]] = []
+        graph.register_hook("triples_added", lambda ts: received.append(ts))
+        graph.add_triple(_triple("x", obj="y"))
+        assert len(received) == 1
+        assert len(received[0]) == 1
+        assert received[0][0].subject.name == "x"
+
+    def test_add_triples_fires_hook(self, graph: OntologyGraph) -> None:
+        received: list[list[Triple]] = []
+        graph.register_hook("triples_added", lambda ts: received.append(ts))
+        graph.add_triples([_triple("a", obj="b"), _triple("c", obj="d")])
+        assert len(received) == 1
+        assert len(received[0]) == 2
+
+    def test_remove_triple_fires_hook(self, graph: OntologyGraph) -> None:
+        graph.add_triple(_triple("a", obj="b"))
+        received: list[list[Triple]] = []
+        graph.register_hook("triples_removed", lambda ts: received.append(ts))
+        graph.remove_triple(_ref("a"), Predicate.RELATED_TO, _ref("b"))
+        assert len(received) == 1
+
+    def test_remove_entity_fires_hook(self, graph: OntologyGraph) -> None:
+        graph.add_triples([_triple("hub", obj="a"), _triple("hub", obj="b")])
+        received: list[list[Triple]] = []
+        graph.register_hook("triples_removed", lambda ts: received.append(ts))
+        graph.remove_entity(_ref("hub"))
+        assert len(received) == 1
+        assert len(received[0]) == 2
+
+    def test_hook_not_fired_on_empty_add(self, graph: OntologyGraph) -> None:
+        received: list[list[Triple]] = []
+        graph.register_hook("triples_added", lambda ts: received.append(ts))
+        graph.add_triples([])
+        assert received == []
+
+    def test_invalid_hook_event_raises(self, graph: OntologyGraph) -> None:
+        with pytest.raises(ValueError, match="Unknown hook event"):
+            graph.register_hook("invalid_event", lambda ts: None)
+
+    def test_multiple_hooks_all_fire(self, graph: OntologyGraph) -> None:
+        count = [0, 0]
+        graph.register_hook("triples_added", lambda ts: count.__setitem__(0, count[0] + 1))
+        graph.register_hook("triples_added", lambda ts: count.__setitem__(1, count[1] + 1))
+        graph.add_triple(_triple("x", obj="y"))
+        assert count == [1, 1]
+
+    def test_failing_hook_does_not_block(self, graph: OntologyGraph) -> None:
+        called = [False]
+
+        def bad_hook(ts: list[Triple]) -> None:
+            raise RuntimeError("boom")
+
+        def good_hook(ts: list[Triple]) -> None:
+            called[0] = True
+
+        graph.register_hook("triples_added", bad_hook)
+        graph.register_hook("triples_added", good_hook)
+        graph.add_triple(_triple("x", obj="y"))
+        assert called[0] is True
 
 
 class TestPrune:

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from ontology.schema import Entity, EntityRef, Predicate, Triple
+from ontokernel.schema import Entity, EntityRef, Predicate, Triple
 
 
 class Neo4jBackend:
