@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
 
 from ontology.config import KernelConfig
 from ontology.graph import OntologyGraph
-from ontology.schema import EntityRef, Predicate, Triple
+from ontology.schema import EntityRef, Predicate, QueryResult, Triple
 
 
 @pytest.fixture()
@@ -115,6 +116,43 @@ class TestContextFor:
         ctx = graph.context_for("target_entity", top_n=5)
         lines = [line for line in ctx.strip().split("\n") if line.strip()]
         assert len(lines) <= 5
+
+    def test_multi_hop_reaches_distant_nodes(self, graph: OntologyGraph) -> None:
+        graph.add_triples([
+            _triple("bitcoin_price", Predicate.INFLUENCES, "market_sentiment"),
+            _triple("market_sentiment", Predicate.PREDICTS, "trading_volume"),
+        ])
+        ctx_1hop = graph.context_for("bitcoin", max_hops=1)
+        ctx_2hop = graph.context_for("bitcoin", max_hops=2)
+        assert "trading_volume" not in ctx_1hop
+        assert "trading_volume" in ctx_2hop
+
+    def test_recency_half_life_favors_recent(self, graph: OntologyGraph) -> None:
+        now = time.time()
+        old_triple = Triple(
+            subject=_ref("bitcoin_price"), predicate=Predicate.INFLUENCES,
+            obj=_ref("market"), confidence=0.9, source="test",
+            timestamp=now - 30 * 24 * 3600,
+        )
+        new_triple = Triple(
+            subject=_ref("bitcoin_price"), predicate=Predicate.PREDICTS,
+            obj=_ref("sentiment"), confidence=0.5, source="test",
+            timestamp=now,
+        )
+        graph.add_triples([old_triple, new_triple])
+        ctx = graph.context_for("bitcoin_price", top_n=1, recency_half_life=24.0)
+        assert "sentiment" in ctx
+
+    def test_context_for_query_returns_query_result(self, graph: OntologyGraph) -> None:
+        graph.add_triple(_triple("bitcoin_price", Predicate.INFLUENCES, "market_sentiment"))
+        result = graph.context_for_query("bitcoin market")
+        assert isinstance(result, QueryResult)
+        assert len(result.triples) >= 1
+
+    def test_context_for_query_empty(self, graph: OntologyGraph) -> None:
+        result = graph.context_for_query("")
+        assert isinstance(result, QueryResult)
+        assert result.triples == []
 
 
 class TestPrune:

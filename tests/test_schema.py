@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import time
+from datetime import datetime, timezone
+
 import pytest
 from pydantic import ValidationError
 
@@ -13,6 +16,7 @@ class TestPredicate:
         expected = {
             "influences", "related_to", "contradicts", "predicts",
             "caused_by", "involves", "supports", "opposes", "correlates_with",
+            "resolves_to", "has_outcome", "precedes",
         }
         assert {p.value for p in Predicate} == expected
 
@@ -138,6 +142,51 @@ class TestTriple:
             metadata={"key": "value"},
         )
         assert t.metadata == {"key": "value"}
+
+
+class TestDecayedConfidence:
+    def _make(self, confidence: float = 0.8, ts: float | None = None) -> Triple:
+        return Triple(
+            subject=EntityRef(namespace="t", name="a"),
+            predicate=Predicate.INFLUENCES,
+            obj=EntityRef(namespace="t", name="b"),
+            confidence=confidence,
+            timestamp=ts if ts is not None else time.time(),
+        )
+
+    def test_no_age_returns_full_confidence(self) -> None:
+        now = time.time()
+        t = self._make(0.9, ts=now)
+        assert abs(t.decayed_confidence(as_of=now) - 0.9) < 1e-6
+
+    def test_one_half_life_halves_confidence(self) -> None:
+        now = time.time()
+        one_week_ago = now - 168 * 3600
+        t = self._make(1.0, ts=one_week_ago)
+        assert abs(t.decayed_confidence(half_life_hours=168.0, as_of=now) - 0.5) < 1e-6
+
+    def test_two_half_lives(self) -> None:
+        now = time.time()
+        two_weeks_ago = now - 2 * 168 * 3600
+        t = self._make(1.0, ts=two_weeks_ago)
+        assert abs(t.decayed_confidence(half_life_hours=168.0, as_of=now) - 0.25) < 1e-6
+
+    def test_datetime_as_of(self) -> None:
+        ts = 1_700_000_000.0
+        one_week_later = datetime.fromtimestamp(ts + 168 * 3600, tz=timezone.utc)
+        t = self._make(1.0, ts=ts)
+        assert abs(t.decayed_confidence(half_life_hours=168.0, as_of=one_week_later) - 0.5) < 1e-6
+
+    def test_future_timestamp_clamps_to_zero_age(self) -> None:
+        now = time.time()
+        t = self._make(0.8, ts=now + 3600)
+        result = t.decayed_confidence(as_of=now)
+        assert abs(result - 0.8) < 1e-6
+
+    def test_default_as_of_uses_now(self) -> None:
+        t = self._make(0.8)
+        result = t.decayed_confidence()
+        assert abs(result - 0.8) < 0.01
 
 
 class TestEntity:

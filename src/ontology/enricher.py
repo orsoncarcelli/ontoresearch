@@ -27,6 +27,9 @@ _PRED_FACETS: dict[str, str] = {
     "involves": "context",
     "related_to": "relations",
     "caused_by": "causes",
+    "resolves_to": "outcomes",
+    "has_outcome": "outcomes",
+    "precedes": "timeline",
 }
 
 

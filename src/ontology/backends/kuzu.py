@@ -33,6 +33,9 @@ _REL_TABLE_NAMES: dict[Predicate, str] = {
     Predicate.SUPPORTS: "SUPPORTS",
     Predicate.OPPOSES: "OPPOSES",
     Predicate.CORRELATES_WITH: "CORRELATES_WITH",
+    Predicate.RESOLVES_TO: "RESOLVES_TO",
+    Predicate.HAS_OUTCOME: "HAS_OUTCOME",
+    Predicate.PRECEDES: "PRECEDES",
 }
 
 _REL_COLUMNS = "confidence DOUBLE, source STRING, ts DOUBLE, metadata STRING"

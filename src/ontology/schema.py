@@ -8,7 +8,9 @@ The string form "ns:name" only appears at IO boundaries.
 
 from __future__ import annotations
 
+import math
 import time
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Self
 
@@ -30,6 +32,9 @@ class Predicate(StrEnum):
     SUPPORTS = "supports"
     OPPOSES = "opposes"
     CORRELATES_WITH = "correlates_with"
+    RESOLVES_TO = "resolves_to"
+    HAS_OUTCOME = "has_outcome"
+    PRECEDES = "precedes"
 
 
 class EntityRef(BaseModel, frozen=True):
@@ -91,6 +96,28 @@ class Triple(BaseModel, frozen=True):
     source: str = ""
     timestamp: float = Field(default_factory=time.time)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    def decayed_confidence(
+        self,
+        half_life_hours: float = 168.0,
+        as_of: datetime | float | None = None,
+    ) -> float:
+        """Confidence weighted by exponential time decay.
+
+        Returns ``confidence * 0.5 ^ (age_hours / half_life_hours)``.
+        Default half-life is 168 h (1 week).  Pass ``as_of`` as a UTC
+        datetime or epoch float; defaults to now.
+        """
+        if isinstance(as_of, datetime):
+            ref_ts = as_of.timestamp()
+        elif as_of is not None:
+            ref_ts = float(as_of)
+        else:
+            ref_ts = time.time()
+
+        age_hours = max(0.0, (ref_ts - self.timestamp) / 3600.0)
+        decay = math.pow(0.5, age_hours / half_life_hours) if half_life_hours > 0 else 0.0
+        return self.confidence * decay
 
 
 class Entity(BaseModel):
