@@ -57,7 +57,7 @@ make dryrun                  # runs test + typecheck + lint
 ### Directory Layout (v1.1)
 
 ```
-src/ontology/
+src/ontokernel/
 ├── __init__.py           # Public API re-exports
 ├── schema.py             # Pydantic v2: Triple, EntityRef, Predicate, Entity, QueryResult
 ├── protocols.py          # OntologyBackend + EnricherProtocol + DomainPlugin (typing.Protocol)
@@ -85,7 +85,7 @@ tests/
 ```
 
 #### Planned for v2.0
-- `src/ontology/events.py` — post-commit event bus
+- `src/ontokernel/events.py` — post-commit event bus
 
 ### Key Interfaces (protocols.py)
 
@@ -127,7 +127,7 @@ When a market is upserted → kernel fires event → all registered domain enric
 ## Conventions
 
 - Spaces, not tabs; lowercase filenames and directories
-- All imports use the `ontology.*` prefix (e.g. `from ontology.schema import Triple`)
+- All imports use the `ontokernel.*` prefix (e.g. `from ontokernel.schema import Triple`)
 - Wrap HTTP calls with `@retry_with_backoff` (from shared utils)
 - Commit messages: short, imperative (`Add schema validation`, `Wire Kuzu backend`)
 - Keep commits focused on one change

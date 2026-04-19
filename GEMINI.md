@@ -1,6 +1,6 @@
-# Ontology
+# ontokernel
 
-`ontology` is a standalone, domain-agnostic ontology kernel — a typed knowledge graph engine designed to power AI agents and swarm intelligence. It is a greenfield rebuild of the ontology logic from `onto-market`, focusing on architectural purity, pluggable backends, and thread safety.
+`ontokernel` is a standalone, domain-agnostic ontology kernel — a typed knowledge graph engine designed to power AI agents and swarm intelligence. It is a greenfield rebuild of the ontology logic from `onto-market`, focusing on architectural purity, pluggable backends, and thread safety.
 
 ## Project Overview
 
@@ -31,7 +31,7 @@ pip install -e ".[dev]"
 - **Language:** Python >= 3.11 with Pydantic v2 for data validation.
 - **Code Style:** Use spaces (not tabs), keep filenames/directories lowercase.
 - **Project Structure:**
-  - `src/ontology/`: Main implementation.
+  - `src/ontokernel/`: Main implementation.
   - `tests/`: Test suite mirroring the `src/` structure.
 - **Interfaces:** Use `typing.Protocol` for all pluggable components (backends, plugins, enrichers) to avoid rigid base class inheritance.
 - **Plugin System:** Register domain plugins via `pyproject.toml` entry points under `[project.entry-points."ontology.plugins"]`.
@@ -40,7 +40,7 @@ pip install -e ".[dev]"
 ## Target Directory Layout
 
 ```
-src/ontology/
+src/ontokernel/
 ├── protocols.py          # Abstract interfaces (OntologyBackend, DomainPlugin, EnricherProtocol)
 ├── schema.py             # Pydantic v2 models: Triple, Entity, Relation, Namespace
 ├── namespace.py          # Namespace registry + validation
